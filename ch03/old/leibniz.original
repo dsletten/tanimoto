@@ -1,0 +1,224 @@
+;#!/usr/local/bin/clisp
+;;;;    Hey, Emacs, this is a -*- Mode: Lisp; Syntax: Common-Lisp -*- file!
+;;;;
+;;;;   NAME:               leibniz.lisp
+;;;;
+;;;;   STARTED:            Fri Aug  9 01:52:16 2002
+;;;;   MODIFICATIONS:
+;;;;
+;;;;   PURPOSE:
+;;;;
+;;;;
+;;;;
+;;;;   CALLING SEQUENCE:
+;;;;
+;;;;
+;;;;   INPUTS:
+;;;;
+;;;;   OUTPUTS:
+;;;;
+;;;;   EXAMPLE:
+;;;;
+;;;;   NOTES: This is Tanimoto's original version of LEIBNIZ with the minor
+;;;;   difference that this version works! His version does not work properly
+;;;;   with the MATCH function when LAMBDA functions are passed as matching
+;;;;   functions. This is due to the fact that he doesn't pass functions to
+;;;;   MATCH but rather lists whose first elements are simply LAMBDA!
+;;;;
+;;;;   I have also DEFVAR'd all of the rules and named them in accordance with
+;;;;   the global variables that they are. I have also introduced a closure
+;;;;   for the RULES variable. The only function that needs access to this
+;;;;   variable is CONTROL. The rules themselves could conceivably be
+;;;;   introduced as local variables as well.
+;;;;
+;;;;   See leibniz.lisp for more radical changes.
+;;;;
+
+(load "match")
+
+(defvar *diff-sum-rule*
+  `(differentiate
+    (d (,#'(lambda (f)
+	   (and (not (atom f))
+		(match '(+ (? e1) (? e2)) f)))
+	e3)
+     (? v1))
+    `(+ (d ,e1 ,v1) (d ,e2 ,v1))
+    diff-sum-rule))
+
+(defvar *diff-x-rule*
+  `(differentiate
+    (d (,#'(lambda (v) (setq e1 v)) e1) (,#'(lambda (v) (eq v e1)) e2))
+    1
+    diff-x-rule))
+
+(defvar *diff-const-rule*
+  `(differentiate
+    (d (,#'(lambda (f) (setq e1 f)) f) (,#'(lambda (v1) (no-v1 e1 v1)) v1))
+    0
+    diff-const-rule))
+
+(defun no-v1 (f v1)
+  (cond ((null f) t)
+	((atom f) (not (eq f v1)))
+	((no-v1 (car f) v1) (no-v1 (cdr f) v1))
+	(t nil)))
+
+(defvar *diff-product-rule*
+  `(differentiate
+    (d (,#'(lambda (f)
+	  (and (not (atom f))
+	       (match '(* (? e1) (? e2)) f)))
+	e3)
+     (? v1))
+    `(+ (* ,e2 (d ,e1 ,v1)) (* ,e1 (d ,e2 ,v1)))
+    diff-product-rule))
+
+(defvar *diff-power-rule*
+  `(differentiate
+    (d (,#'(lambda (f)
+	  (and (not (atom f))
+	       (match '(exp (? e1) (numberp e2)) f)))
+	e3)
+     (? v1))
+    `(* ,e2 (* (exp ,e1 (1- ,e2)) (d ,e1 ,v1)))
+    diff-power-rule))
+
+(defvar *sub1-rule*
+  '(simplify
+    (1- (numberp e1))
+    (1- e1)
+    sub1-rule))
+
+(defvar *exp0-rule*
+  '(simplify
+    (exp (? e1) 0)
+    1
+    exp0-rule))
+
+(defvar *exp1-rule*
+  '(simplify
+    (exp (? e1) 1)
+    e1
+    exp1-rule))
+
+(defvar *times1-rule*
+  '(simplify
+    (* (? e1) 1)
+    e1
+    times1-rule))
+
+(defvar *one-times-rule*
+  '(simplify
+    (* 1 (? e1))
+    e1
+    one-times-rule))
+
+(defvar *plus0-rule*
+  '(simplify
+    (+ (? e1) 0)
+    e1
+    plus0-rule))
+
+(defvar *zero-plus-rule*
+  '(simplify
+    (+ 0 (? e1))
+    e1
+    zero-plus-rule))
+
+(defvar *times0-rule*
+  '(simplify
+    (* (? e1) 0)
+    0
+    times0-rule))
+
+(defvar *zero-times-rule*
+  '(simplify
+    (* 0 (? e1))
+    0
+    zero-times-rule))
+
+(defvar *constant-addition-rule*
+  '(simplify
+    (+ (numberp e1) (numberp e2))
+    (+ e1 e2)
+    constant-addition-rule))
+
+(defvar *constant-multiplication-rule*
+  '(simplify
+    (* (numberp e1) (numberp e2))
+    (* e1 e2)
+    constant-multiplication-rule))
+
+(defvar *goal-change-rule*
+  '(differentiate
+    ((* f))
+    (prog () (setq *current-goal* 'simplify) (return f))
+    goal-change-rule))
+
+(let ((rules `(,*diff-sum-rule* ,*diff-x-rule* ,*diff-const-rule*
+	       ,*diff-product-rule* ,*diff-power-rule*
+	       ,*goal-change-rule*
+	       ,*sub1-rule* ,*exp0-rule* ,*exp1-rule*
+	       ,*times1-rule* ,*one-times-rule* ,*times0-rule* ,*zero-times-rule*
+	       ,*plus0-rule* ,*zero-plus-rule*
+	       ,*constant-addition-rule* ,*constant-multiplication-rule*)))
+  (defun control ()
+    (loop
+     (cond ((not (try-rules rules))
+	    (return *current-formula*)))) ))
+
+(defun try-rules (rules-left)
+  (cond ((null rules-left) nil)
+	(t (let ((temp (try-rule (car rules-left)
+				 *current-formula*)))
+	     (if temp
+		 (setq *current-formula* temp)
+		 (try-rules (cdr rules-left)))) )))
+
+(defun try-rule (rule expression)
+  (labels ((try-rule-aux (rule expression)
+	     (cond ((atom expression) nil)
+		   ((match (rule-pattern rule) expression)
+		    (fire rule))
+		   (t (try-rule-on-list rule expression))))
+	   (try-rule-on-list (rule expression-list)
+	     (let (temp)
+	       (cond ((null expression-list) nil)
+		     ((setq temp (try-rule-aux rule
+					       (car expression-list)))
+		      (cons temp (cdr expression-list)))
+		     ((setq temp (try-rule-on-list rule
+						   (cdr expression-list)))
+		      (cons (car expression-list) temp))
+		     (t nil)))) )
+    (if (not (eq *current-goal* (rule-goal rule)))
+	nil
+	(try-rule-aux rule expression))))
+
+(defun fire (rule)
+  (format t "~&~A fires." (name rule))
+  (eval (rule-action rule)))
+
+;;;;
+;;;;    Missing function definitions
+;;;;    
+(defun rule-goal (rule)
+  (first rule))
+
+(defun rule-pattern (rule)
+  (second rule))
+
+(defun rule-action (rule)
+  (third rule))
+
+(defun name (rule)
+  (fourth rule))
+
+(defun reset (goal)
+  (setf *current-goal* 'differentiate)
+  (setf *current-formula* goal))
+
+
+  
+     

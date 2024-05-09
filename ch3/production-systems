@@ -1,0 +1,1053 @@
+Rule-based Programming,
+  Production Systems,
+    and Expert Systems
+
+Lee Spector, 1995-8
+
+
+
+
+
+
+
+What is thinking?
+
+
+
+One answer: following rules.
+
+
+
+
+
+
+
+
+
+Programming with rules:
+
+  declarative representations of control 
+  specifications
+
+
+
+
+
+
+
+
+
+First, consider the following random sentence 
+generator, programmed in a "functional" style:
+
+[this code and that for the "rule-based solution" 
+is from Peter Norvig's Paradigms of AI Programming.]
+
+(defun random-elt (choices)
+  "returns one element of the list of choices 
+at random"
+  (nth (random (length choices)) choices))
+
+(defun one-of (set)
+  "picks one element of the set and returns it 
+in a list"
+  (list (random-elt set)))
+
+(defun sentence ()
+  "generates and returns a sentence as a list 
+of atoms"
+  (append (noun-phrase) (verb-phrase)))
+
+(defun noun-phrase ()
+  "generates and returns a noun-phrase as a 
+list of atoms"
+  (append (article) (noun)))
+
+(defun verb-phrase ()
+  "generates and returns a verb-phrase as a 
+list of atoms"
+  (append (verb) (noun-phrase)))
+
+(defun article ()
+  "generates and returns an article as an 
+atom in a list"
+  (one-of '(the a)))
+
+(defun noun ()
+  "generates and returns a noun as an atom 
+in a list"
+  (one-of '(man ball woman table)))
+
+(defun verb ()
+  "generates and returns a noun as an atom 
+in a list"
+  (one-of '(hit took saw liked)))
+
+(sentence)
+--> (THE MAN SAW A MAN)
+
+
+
+
+Suppose we wanted to allow noun phrases to 
+be modified by an indefinite number of 
+adjectives and an indefinite number of 
+prepositional phrases:
+
+Noun-Phrase => Article + Adj* + Noun + PP*
+Adj* => <nothing>, Adj + Adj*
+PP* => <nothing>, PP + PP*
+PP => Prep + Noun-Phrase
+Adj => big, little, blue, green, ...
+Prep => to, in, by, with, ...
+
+(the * is used here as a Kleene star)
+
+Adj* and PP* must be a bit more complicated 
+than the previous functions:
+
+(defun adj* ()
+  "returns a list of some (random) number 
+of adjectives"
+  (cond ((= (random 2) 0) nil)
+        (t (append (adj) (adj*)))))
+
+(defun pp* ()
+  "returns a list of some (random) number 
+of prepositions"
+  (cond ((= (random 2) 0) nil)
+        (t (append (pp) (pp*)))))
+
+We must also redefine noun-phrase, and 
+provide new definitions for PP, Adj, and Prep:
+
+(defun noun-phrase ()
+  "generates and returns a noun-phrase as 
+a list of atoms"
+  (append (article) (adj*) (noun) (pp*)))
+
+(defun pp ()
+  "generates and returns a prepositional-phrase 
+as a list of atoms"
+  (append (prep) (noun-phrase)))
+
+(defun adj ()
+  "generates and returns an adjective in a list"
+  (one-of '(big little blue green adiabatic)))
+
+(defun prep ()
+  "generates and returns a preposition in a list"
+  (one-of '(to in by with on)))
+
+(sentence)
+--> (THE WOMAN TOOK A BALL)
+
+
+
+Defining adj* and pp* correctly can be tricky. 
+The following are INCORRECT definitions:
+
+(defun adj* ()
+  "INCORRECT!!"
+  (one-of '(nil (append (adj) (adj*)))))
+
+(defun adj* ()
+  "INCORRECT!!"
+  (one-of (list nil (append (adj) (adj*)))))
+
+It would be nice to find a way to generate 
+sentences based on grammar rules themselves, 
+so we wouldn't have to write complex functions 
+every time we wanted to enhance the grammar. 
+
+
+
+A Rule-Based Solution
+
+Here's the original grammar again:
+
+Sentence => Noun-Phrase + Verb-Phrase
+Noun-Phrase => Article + Noun
+Verb-Phrase => Verb + Noun-Phrase
+Article => the, a, ...
+Noun => man, ball, woman, table ...
+Verb => hit, took, saw, liked ...
+
+We represent this in lisp by using the convention 
+that alternative rewrites will be listed as 
+separate elements of a rule, and that 
+substructures to be appended together will 
+be combined into sublists.
+
+(defvar *grammar* nil
+  "The grammar to be used in rule-based sentence 
+generation.")
+
+(setq *grammar*
+  '((Sentence -> (Noun-Phrase Verb-Phrase))
+    (Noun-Phrase -> (Article Noun))
+    (Verb-Phrase -> (Verb Noun-Phrase))
+    (Article -> the a)
+    (Noun -> man ball woman table)
+    (Verb -> hit took saw liked)))
+
+The "->" in the grammar rules is "syntactic sugar."
+
+
+
+We need some functions to access the grammar 
+rules during sentence generation.
+
+(defun rule-lhs (rule)
+  "returns the left-hand side of a rule"
+  (first rule))
+
+(defun rule-rhs (rule)
+  "returns the right-hand side of a rule"
+  (rest (rest rule)))
+
+(defun get-grammar-rule (category rules)
+  "returns the rule from rules that starts 
+with the given category."
+  (cond ((null rules) nil)
+        ((equalp (caar rules) category)
+         (car rules))
+        (t (get-grammar-rule category (cdr rules)))))
+
+(defun rewrites (category)
+  "returns a list of possible rewrites for 
+the category"
+  (rule-rhs (get-grammar-rule category *grammar*)))
+
+
+
+We are now ready to write the new sentence 
+generating function:
+
+(defun generate (phrase)
+  "generates and returns a random sentence or phrase"
+  (cond ((listp phrase)     ;; it's a sequence of sub-phrases
+         (generate-all phrase))
+        ((rewrites phrase)  ;; it's an atom with rewrites
+         (generate (random-elt (rewrites phrase))))
+        (t (list phrase)))) ;; it's a word
+
+(defun generate-all (phrase-list)
+  (cond ((null phrase-list) nil)
+        (t (append (generate (car phrase-list))
+                   (generate-all (cdr phrase-list))))))
+
+(generate 'sentence)
+--> (A MAN SAW A WOMAN)
+
+(trace generate)
+--> NIL
+
+
+(generate 'sentence)
+ Calling (GENERATE SENTENCE) 
+  Calling (GENERATE NOUN-PHRASE) 
+   Calling (GENERATE ARTICLE) 
+   GENERATE returned (A)
+   Calling (GENERATE NOUN) 
+   GENERATE returned (BALL)
+  GENERATE returned (A BALL)
+  Calling (GENERATE VERB-PHRASE) 
+   Calling (GENERATE VERB) 
+   GENERATE returned (SAW)
+   Calling (GENERATE NOUN-PHRASE) 
+    Calling (GENERATE ARTICLE) 
+    GENERATE returned (THE)
+    Calling (GENERATE NOUN) 
+    GENERATE returned (MAN)
+   GENERATE returned (THE MAN)
+  GENERATE returned (SAW THE MAN)
+ GENERATE returned (A BALL SAW THE MAN)
+--> (A BALL SAW THE MAN)
+
+(untrace generate)
+--> (GENERATE)
+
+(generate 'Noun-Phrase)
+--> (A BALL)
+
+
+Switching to a bigger (or just different) 
+grammar is now easy:
+
+(setq *grammar*
+  '((sentence -> (noun-phrase verb-phrase))
+    (noun-phrase
+     -> (article adj* noun pp*) (name) (pronoun))
+    (verb-phrase -> (verb noun-phrase pp*))
+    (pp* -> () (pp pp*))
+    (adj* -> () (adj adj*))
+    (pp -> (prep noun-phrase))
+    (prep -> to in by with on)
+    (adj -> big little blue green adiabatic)
+    (article -> the a)
+    (name -> pat kim lee terry robin)
+    (noun -> man ball woman table)
+    (verb -> hit took saw liked)
+    (pronoun -> he she it these those that)))
+
+(generate 'sentence)
+--> (THE WOMAN HIT THE TABLE)
+
+(generate 'sentence)
+--> (ROBIN HIT THAT)
+
+(generate 'sentence)
+--> (SHE HIT THE LITTLE WOMAN TO THE LITTLE 
+TABLE BY A WOMAN)
+
+(generate 'sentence)
+--> (SHE SAW THE BLUE LITTLE LITTLE TABLE 
+ON A ADIABATIC BLUE TABLE TO THE MAN ON THE 
+GREEN WOMAN WITH SHE BY SHE BY PAT BY THOSE 
+TO THESE BY HE ON THAT IN PAT IN THOSE IN THESE)
+
+(generate 'sentence)
+--> (THAT TOOK A MAN TO HE)
+
+(generate 'sentence)
+--> (SHE SAW IT WITH THOSE)
+
+
+(setq *grammar*
+  '((c-blues -> (c-phrase c-phrase c-phrase c-phrase
+                 f-phrase f-phrase c-phrase c-phrase
+                 g-phrase f-phrase c-phrase c-phrase))
+    ;; C PHRASES
+    (c-phrase -> (c-whole) (c-half-phrase c-half-phrase))
+    (c-whole -> ( [ c octave whole ]))
+    (c-half-phrase -> (c-half) (c-quarter-phrase c-quarter-phrase))
+    (c-half -> ( [ c octave half ] ))
+    (c-quarter-phrase -> (c-quarter) (c-eighth-phrase c-eighth-phrase))
+    (c-quarter -> ( [ c-note octave quarter ] ))
+    (c-eighth-phrase -> c-eighth)
+    (c-eighth -> ( [ c-note octave eighth ] ))
+    (c-note -> c (e flat) g (b flat))
+    ;; F PHRASES
+    (f-phrase -> (f-whole) (f-half-phrase f-half-phrase))
+    (f-whole -> ( [ f octave whole ] ))
+    (f-half-phrase -> (f-half) (f-quarter-phrase f-quarter-phrase))
+    (f-half -> ( [ f octave half ] ))
+    (f-quarter-phrase -> (f-quarter) (f-eighth-phrase f-eighth-phrase))
+    (f-quarter -> ( [ f-note octave quarter ] ))
+    (f-eighth-phrase -> f-eighth)
+    (f-eighth -> ( [ f-note octave eighth ] ))
+    (f-note -> f a c (e flat))
+    ;; G PHRASES
+    (g-phrase -> (g-whole) (g-half-phrase g-half-phrase))
+    (g-whole -> ( [ g octave whole ] ))
+    (g-half-phrase -> (g-half) (g-quarter-phrase g-quarter-phrase))
+    (g-half -> ( [ g octave half ] ))
+    (g-quarter-phrase -> (g-quarter) (g-eighth-phrase g-eighth-phrase))
+    (g-quarter -> ( [ g-note octave quarter ] ))
+    (g-eighth-phrase -> g-eighth)
+    (g-eighth -> ( [ g-note octave eighth ] ))
+    (g-note -> g (b flat) d f)
+    ;; OCTAVES
+    (octave -> 1 2 3 4)))
+
+(generate 'c-blues)
+--> ([ C 5 WHOLE ] [ B FLAT 3 EIGHTH ] [ E FLAT 5 EIGHTH ] [ G 5 EIGHTH ] [ G 4
+     EIGHTH ] [ B FLAT 3 QUARTER ] [ C 4 EIGHTH ] [ B FLAT 3 EIGHTH ] [ C 5
+     WHOLE ] [ C 5 WHOLE ] [ F 4 WHOLE ] [ F 5 QUARTER ] [ A 3 EIGHTH ] [ F 4
+     EIGHTH ] [ A 4 QUARTER ] [ F 5 EIGHTH ] [ F 3 EIGHTH ] [ C 4 HALF ] [ G 3
+     EIGHTH ] [ G 4 EIGHTH ] [ B FLAT 5 EIGHTH ] [ G 5 EIGHTH ] [ C 3 WHOLE ] [
+     G 3 WHOLE ] [ F 4 WHOLE ] [ C 3 HALF ] [ C 3 HALF ] [ C 3 WHOLE ])
+
+
+(defun brackets-to-parens (list)
+  "Returns a copy of a list with [ and ] symbols
+converted into list delimiting parentheses. NOTE:
+this works by converting the list to a string and
+back."
+  (read-from-string
+   (substitute #\( #\[
+               (substitute #\) #\]
+                           (princ-to-string list)))))
+
+(brackets-to-parens (generate 'c-blues))
+
+;; after loading mcl-music:
+
+(play-piano-part 
+ (brackets-to-parens (generate 'c-blues)))
+
+(play-symbolic-music
+ (list (cons "Acoustic Grand Piano"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "Acoustic Grand Piano"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "Acoustic Grand Piano"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "Acoustic Grand Piano"
+             (brackets-to-parens (generate 'c-blues)))
+       ))
+
+(play-symbolic-music
+ (list (cons "Electric Bass (finger)"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "Rock Organ"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "Overdriven Guitar"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "Agogo"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "Timpani"
+             (brackets-to-parens (generate 'c-blues)))))
+
+(play-symbolic-music
+ (list (cons "FX 8 (sci-fi)"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "FX 8 (sci-fi)"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "FX 6 (goblins)"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "FX 6 (goblins)"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "FX 6 (goblins)"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "FX 6 (goblins)"
+             (brackets-to-parens (generate 'c-blues)))))
+
+(play-symbolic-music
+ (list (cons "Electric Bass (finger)"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "Contrabass"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "Accordion"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "Baritone Sax"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "Agogo"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "Timpani"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "Timpani"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "Timpani"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "FX 8 (sci-fi)"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "FX 8 (sci-fi)"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "FX 6 (goblins)"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "FX 6 (goblins)"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "FX 6 (goblins)"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "FX 6 (goblins)"
+             (brackets-to-parens (generate 'c-blues)))))
+
+
+(play-symbolic-music
+ (list (cons "Reverse Cymbal"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "Guitar Fret Noise"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "Breath Noise"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "Seashore"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "Agogo"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "Bird Tweet"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "Telephone Ring"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "Helicopter"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "Applause"
+             (brackets-to-parens (generate 'c-blues)))
+       (cons "Gunshot"
+             (brackets-to-parens (generate 'c-blues)))
+       ))
+
+
+
+
+
+Production systems can be classified into 
+"ordered" and "unordered" varieties.
+
+(defun roman1 ()
+  "Roman numeral conversion with an unordered P.S."
+  (let ((x nil))
+    (loop
+      (cond
+        ((null x) (format t "Enter number:") (setf x (read)))
+        ((and (not (null x)) (> x 39))
+         (format t "too big~%") (setf x nil))
+        ((and (not (null x)) (< x 40) (> x 9))
+         (prin1 'x) (setf x (- x 10)) )
+        ((and (not (null x)) (= x 9))
+         (prin1 'ix) (setf x 0) )
+        ((and (not (null x)) (< x 9) (> x 4))
+         (prin1 'v) (setf x (- x 5)) )
+        ((and (not (null x)) (= x 4))
+         (prin1 'iv) (setf x 0) )
+        ((and (not (null x)) (< x 4) (> x 0))
+         (prin1 'i) (setf x (1- x)) )
+        ((zerop x) (setf x nil) (terpri)) ) ) ) )
+
+? (roman1)
+Enter number:1963
+too big
+Enter number:19
+XIX
+Enter number:0
+
+Enter number:1
+I
+Enter number:4
+IV
+Enter number:5
+V
+Enter number:49
+too big
+
+
+
+(defun roman2 ()
+  "Roman numeral conversion with an ordered P.S."
+  (let ((x nil))
+    (loop
+      (cond
+        ((null x) (format t "Enter number:") (setf x (read)))
+        ((> x 39) (format t "too big~%") (setf x nil))
+        ((> x 9) (prin1 'x) (setf x (- x 10)) )
+        ((= x 9) (prin1 'ix) (setf x 0) )
+        ((> x 4) (prin1 'v) (setf x (- x 5)) )
+        ((= x 4) (prin1 'iv) (setf x 0) )
+        ((> x 0) (prin1 'i) (setf x (1- x)) )
+        ((zerop x) (setf x nil) (terpri))
+         ) ) ) )
+
+? (roman2)
+Enter number:23
+XXIII
+Enter number:49
+too big
+Enter number:
+Aborted
+? 
+
+
+
+The set of rules can be more quickly traversed with 
+a discrimination net.
+
+(defun roman3 ()
+  "Roman numeral conversion with a discrimination net."
+  (let ((x nil))
+    (loop
+      (cond
+       ((null x) (format t "Enter number:")
+        (setf x (read)) )
+       (t (cond
+           ((> x 39) (format t "too big~%")
+            (setf x nil) )
+           (t (cond
+               ((> x 4)
+                (cond ((> x 9)
+                       (prin1 'x)(decf x 10))
+                      (t (cond ((= x 9)
+                                (prin1 'ix)
+                                (setf x 0) )
+                               (t
+                                (prin1 'v)
+                                (decf x 5) ) )) ))
+               (t (cond ((= x 4) (prin1 'iv)
+                         (setf x 0) )
+                        (t (cond ((> x 0)
+                                  (prin1 'i)
+                                  (decf x) )
+                                 (t (terpri)
+                                    (setf x nil) )
+                                 )) )) )) )) )) ) )
+
+
+
+
+More powerful rule-based systems can be defined 
+by putting a pattern on the left-hand side of
+
+the rules. For this reason, a symbolic pattern 
+matcher is generally at the heart of any real 
+production system. In matching a rule's left-hand 
+side a set of bindings are established; those 
+bindings are then available for use in the actions 
+specified in the right-hand side.
+
+The function MATCHL is defined in the text. 
+We won't cover the code in detail in class, but 
+here is how it behaves:
+
+(matchl '((? subject) is (? object))
+        '(sam is hungry))
+--> ((SUBJECT . SAM) (OBJECT . HUNGRY) (YES . YES))
+
+(matchl '((? subject) is (? object))
+        '(the dog is hungry))
+--> NIL
+
+(matchl '((* subject) is (? object))
+        '(the dog is hungry))
+--> ((SUBJECT THE DOG) (OBJECT . HUNGRY) (YES . YES))
+
+(matchl '((* subject) is (? object))
+        '(the dog is my friend))
+--> NIL
+
+(matchl '((* x) I want (* y))
+        '(sometimes I want a cheeseburger))
+--> ((X SOMETIMES) (Y A CHEESEBURGER) (YES . YES))
+
+(let ((statement '(sometimes I want a cheeseburger)))
+  (sublis (matchl '((* x) I want (* y)) statement)
+          '(what would it mean if you got y ?)))
+--> (WHAT WOULD IT MEAN IF YOU GOT (A CHEESEBURGER) ?)
+
+(defun flatten (the-list)
+  "Append together elements (or lists) in the list."
+  (apply #'append (mapcar #'(lambda (thing)
+                              (if (listp thing)
+                                thing
+                                (list thing)))
+                          the-list)))
+
+(let ((statement '(sometimes I want a cheeseburger)))
+  (flatten
+   (sublis (matchl '((* x) I want (* y)) statement)
+           '(what would it mean if you got y ?))))
+--> (WHAT WOULD IT MEAN IF YOU GOT A CHEESEBURGER ?)
+
+The MATCHL pattern matcher is still fairly weak:
+
+(matchl '((* x) I want (* x)) 
+        '(sometimes I want a cheeseburger))
+--> ((X SOMETIMES) (X A CHEESEBURGER) (YES . YES))
+
+(matchl '((* x) I want (* y))
+        '(Sometimes (* z) a cheeseburger))
+--> NIL
+
+
+³Unification² is a matching procedure that is able to 
+cope with these cases.
+
+
+
+
+
+
+
+A session with Tanimoto's SHRINK
+
+? (shrink)
+WELCOME TO MY SOFA!
+PLEASE ENCLOSE YOUR INPUT IN PARENTHESES.
+
+(hello doctor)
+
+TELL ME MORE.
+
+(I am wondering if you will really be able to help me)
+
+PLEASE TELL ME WHY YOU ARE WONDERING IF ME WILL REALLY 
+BE ABLE TO HELP YOU.
+
+(I have my doubts about the power of simple pattern 
+matching systems)
+
+HOW LONG HAVE YOU HAD YOUR DOUBTS ABOUT THE POWER 
+OF SIMPLE PATTERN MATCHING SYSTEMS?
+(for about ten years,
+> Error: Comma not inside backquote
+> While executing: CCL::|, reader|
+> Type Command-. to abort.
+See the RestartsŠ menu item for further choices.
+ I
+1 >  
+Aborted
+
+? (shrink)
+
+WELCOME TO MY SOFA!
+PLEASE ENCLOSE YOUR INPUT IN PARENTHESES.
+
+(for about ten years I guess)
+
+FOR ABOUT TEN YEARS YOU GUESS.
+
+(you are a really nice doctor)
+
+OH YEAH I AM A REALLY NICE DOCTOR.
+
+(you have a strange attitude)
+
+TELL ME MORE.
+
+(i have a strange attitude)
+
+HOW LONG HAVE YOU HAD A STRANGE ATTITUDE?
+
+(i feel it has been forever)
+
+I SOMETIMES FEEL THE SAME WAY.
+
+(yes it is terribly strange)
+
+HOW CAN YOU BE SO SURE IT IS TERRIBLY STRANGE?
+
+(why do you ask ?)
+
+YOU TELL ME WHY.
+
+(who are you to order me around ?)
+
+WHO ARE ME TO ORDER YOU AROUND ?.
+
+(what is that supposed to mean?)
+
+YOU TELL ME WHAT.
+
+(go jump in a lake)
+
+WHY DO YOU WANT ME TO GO JUMP IN A LAKE?
+
+(to see if you would short circuit)
+
+I SEE.
+
+(bye)
+
+GOODBYE
+
+Here's the source for the main function for SHRINK
+(defun shrink ()
+  "SHRINK is the top-level function."
+  (let ((wword-count 0) ; counter for question words.
+        (punt-count 0)  ; counter for punt responses.
+        b  ; holds bindings after matching.
+        s) ; holds the mapped input sentence.
+  (format t "WELCOME TO MY SOFA!~%")
+  (format t "PLEASE ENCLOSE YOUR INPUT IN PARENTHESES.~%")
+  (loop (setq s (you-me-map (read)))
+        (terpri)
+        (cond ((match '(bye) s)
+               (return 'goodbye) )
+              ((setf b (match '(you are (* x)) s))
+               (incf wword-count)
+               (print-s (append '(please tell me)
+                                (list (wword wword-count))
+                                '(you are)
+                                (val 'x b) )) )
+              ((setf b (match '(you have (* x)) s))
+               (print-q (append '(how long have you had) (val 'x b) )) )
+              ((match '(you feel (* x)) s)
+               (format t "I SOMETIMES FEEL THE SAME WAY.~%") )
+              ((match '(because (* x)) s)
+               (format t "IS THAT REALLY THE REASON.~%") )
+              ((match nil s)
+               (format t "PLEASE SAY SOMETHING!~%") )
+              ((setf b (match '(yes (* x)) s))
+               (print-q (append '(how can you be so sure) (val 'x b) )) )
+              ((setf b (match '(me are (* x)) s))
+               (print-s (append '(oh yeah i am) (val 'x b) )) )
+              ((setf b (match '((verbp v) (* x)) s))
+               (print-q (append '(why do you want me to)
+                               (list (val 'v b)) (val 'x b) ) ) )
+              ((setf b (match '((wpred w)(* x)) s))
+               (print-s (append '(you tell me)(list (val 'w b))) ) )
+              ((match '(do me think (* x)) s)
+               (format t "I THINK YOU SHOULD ANSWER THAT YOURSELF.~%") )
+              ((setf b (match '((dpred w) me (* x)) s))
+               (print-s (append '(perhaps i)(list (val 'w b)) (val 'x b) ) ) )
+              ((member 'dream s)
+               (format t "FOR DREAM ANALYSIS SEE FREUD.~%") )
+              ((member 'love s)
+               (format t "ALL IS FAIR IN LOVE AND WAR.~%") )
+              ((member 'no s)
+               (format t "DONT BE SO NEGATIVE.~%") )
+              ((member 'maybe s)
+               (format t "BE MORE DECISIVE!~%") )
+              ((member 'you s)(print-s s))
+              (t (incf punt-count)
+                 (print-s (punt punt-count)) ) ) ) ) )
+
+
+Eliza is an interactive dialog program, written in 
+the 1960's by Joseph Weizenbaum.  The best-known 
+version made Eliza emulate a Rogerian ("nondirective") 
+psychoanalyst. Tanimoto's Shrink is essentially a
+version of Eliza. A version of Eliza with
+better programming style (derived from Norvig) is
+available from the class web page.
+
+
+
+
+Tanimoto's LEIBNIZ production system uses similar 
+techniques to manipulate mathematical expressions 
+in symbolic form.
+
+It is structured more like a "real" production system:
+€ Rules are specified independently, rather 
+  than in a single COND structure.
+€ A more powerful pattern matcher is employed.
+
+Example rule: "If the current goal is differentiate 
+and there is a subformula of the form (d (sin x) x) 
+then replace the subformula by (cos x); this is called 
+diff-sin-rule."
+
+Another rule: "If the current goal is differentiate 
+and there is a subformula of the form (d (+ e1 e2) v1) 
+then replace the subformula by one of the form 
+(+ (d e1 v1) (d e2 v1)); this is called diff-sum-rule."
+
+
+; sample formula:
+;
+;  d     2
+;  --   x  + 2x
+;  dx
+
+? (setf *current-formula* 
+        '(d (+ (exp x 2) (* 2 x)) x))
+(D (+ (EXP X 2) (* 2 X)) X)
+? (setf *current-goal* 'differentiate)
+DIFFERENTIATE
+? (control)
+
+Current formula is now: (D (+ (EXP X 2) (* 2 X)) X).
+DIFF-SUM-RULE fires.
+Current formula is now: (+ (D (EXP X 2) X) (D (* 2 X) X)).
+DIFF-POWER-RULE fires.
+Current formula is now: (+ (* 2 (* (EXP X 1) (D X X))) (D (* 2 X) X)).
+DIFF-PRODUCT-RULE fires.
+Current formula is now: (+ (* 2 (* (EXP X 1) (D X X)))
+                           (+ (* X (D 2 X)) (* 2 (D X X)))).
+DIFF-CONST-RULE fires.
+Current formula is now: (+ (* 2 (* (EXP X 1) (D X X)))
+                           (+ (* X 0) (* 2 (D X X)))).
+DIFF-X-RULE fires.
+Current formula is now: (+ (* 2 (* (EXP X 1) 1)) (+ (* X 0) (* 2 (D X X)))).
+DIFF-X-RULE fires.
+Current formula is now: (+ (* 2 (* (EXP X 1) 1)) (+ (* X 0) (* 2 1))).
+GOAL-CHANGE-RULE fires.
+Current formula is now: (+ (* 2 (* (EXP X 1) 1)) (+ (* X 0) (* 2 1))).
+CONSTANT-MULTIPLICATION-RULE fires.
+Current formula is now: (+ (* 2 (* (EXP X 1) 1)) (+ (* X 0) 2)).
+TIMES0-RULE fires.
+Current formula is now: (+ (* 2 (* (EXP X 1) 1)) (+ 0 2)).
+CONSTANT-ADDITION-RULE fires.
+Current formula is now: (+ (* 2 (* (EXP X 1) 1)) 2).
+TIMES1-RULE fires.
+Current formula is now: (+ (* 2 (EXP X 1)) 2).
+EXP1-RULE fires.
+Current formula is now: (+ (* 2 X) 2).
+(+ (* 2 X) 2)
+
+Notes on Tanimoto's Leibniz:
+
+€ Tanimoto's "convenient" DEFRULE is really 
+rather bad style. DEF* operators are usually 
+macros that take their arguments unevaluated. 
+Also, his DEFRULE eliminates the nice keyword 
+arguments to MAKE-RULE and requires instead 
+an unlabled list of arguments.
+
+€ Tanimoto's code will not work in all Common 
+Lisp environments because he APPLYs a lambda 
+form in "raw" list form (without #' or FUNCTION). 
+For this to work correctly (as of CLtL2) the 
+lambda forms must be COERCEd to a FUNCTION. 
+(See CLtL2 p. 145)
+
+€ Tanimoto's code has another bug (EQUALS 
+instead of EQUAL).
+
+€ The file "leibniz-debug.lisp" on the class 
+WWW page corrects these problems.
+
+
+
+
+A general picture of rule-based systems:
+
+
+
+   Rule Base                Knowledge Base
+    ^  |                           |  ^
+    |  |                           |  |
+    |   ---------------------------   |
+    |                |                |
+    |                v                |
+    |       Pick a matching rule      |
+    |                |                |
+    |                v                |
+     ------------ Fire it ------------
+                     |
+                     v
+                Other actions
+
+
+
+The class WWW page contains code for an enhanced 
+version (FPS6.0b2) of Mark Watson's fps forward-chaining 
+production system. You may want to use this, or a 
+modified version of this, for your project. Here is 
+the comment from the top of the file:
+
+This program contains software written by Mark Watson. 
+(from COMMON LISP MODULES, Springer-Verlag 1991)
+
+Enhancements by Lee Spector (LSPECTOR@hamp.hampshire.edu),
+1993-4.
+
+
+Enhancements:
+- various stylistic improvements (IMHO)
+- MESSAGE, *FPS-MESSAGES* -- message recording system
+- new MAKE-FACT -- non-destructive, leading to many changes elsewhere
+- extended then-clause functionality -- then-clause syntax:
+  (add <fact>)      | (delete <fact>)      | (eval <lisp form>) | 
+  (add-rule <rule>) | (delete-rule <rule>) | (halt)
+- variable substitution decends into tree structures, but
+  fact matching is still top-level-only. 
+- FIRE-RULE? split into FIRE-RULE? and DO-THEN-CLAUSES.
+- better pattern matcher with segment variables (adapted from Norvig's ELIZA)
+- evals nested within other RHS then clauses (partially implemented -- initial leading evals only).
+
+Possible future enhancements:
+- negated IF clauses
+- unification pattern matcher
+- rule-base matching in IF clauses
+- tree-structured fact matching
+- DELETE-RULE that doesn't care about variable names matching
+
+
+Some FPS6 examples:
+
+? (setq *rules*
+      '((if (in jeep) (has ?object) then (add (drive jeep)))
+        (if (has ?x) then (add (drop ?x)))
+        (if (drive jeep) then (add (be-at store)))
+        (if (in jeep) then (add (leave jeep)))
+        (if (leave jeep) then (add (walk)))))
+
+? (setq *facts* '((in jeep) (has keys)))
+
+? (forward)
+NO-MORE-RULES-FIRE
+
+? (print-messages)
+New fact: (DRIVE JEEP)
+From rule: (IF (IN JEEP) (HAS ?OBJECT) THEN (ADD (DRIVE JEEP)))
+New fact: (DROP KEYS)
+From rule: (IF (HAS ?X) THEN (ADD (DROP ?X)))
+New fact: (BE-AT STORE)
+From rule: (IF (DRIVE JEEP) THEN (ADD (BE-AT STORE)))
+New fact: (LEAVE JEEP)
+From rule: (IF (IN JEEP) THEN (ADD (LEAVE JEEP)))
+New fact: (WALK)
+From rule: (IF (LEAVE JEEP) THEN (ADD (WALK)))
+NIL
+
+? (setq *rules*
+      '((if (in jeep) (has ?object) then (add (drive jeep)))
+        (if (has ?x) (angry)
+            then
+            (add (drop ?x))
+            (eval (format t "Ouch! I dropped ~a!~%" ?x))
+            (delete (angry)))
+        (if (drive jeep) then (add (be-at store)))
+        (if (in jeep) then (add (leave jeep)))
+        (if (leave jeep) (fidgety)
+            then
+            (add (walk))
+            (eval (ed-beep))
+            (delete (fidgety)))))
+
+? (setq *facts* '((in jeep) (has keys) (angry) (fidgety)))
+
+? (forward)
+Ouch! I dropped KEYS!
+NO-MORE-RULES-FIRE
+
+? (print-messages)
+New fact: (DRIVE JEEP)
+From rule: (IF (IN JEEP) (HAS ?OBJECT) THEN (ADD (DRIVE JEEP)))
+New fact: (DROP KEYS)
+Deleted fact: (ANGRY)
+From rule: (IF (HAS ?X)
+             (ANGRY)
+             THEN
+             (ADD (DROP ?X))
+             (EVAL (FORMAT T Ouch! I dropped ~a!~% ?X))
+             (DELETE (ANGRY)))
+New fact: (BE-AT STORE)
+From rule: (IF (DRIVE JEEP) THEN (ADD (BE-AT STORE)))
+New fact: (LEAVE JEEP)
+From rule: (IF (IN JEEP) THEN (ADD (LEAVE JEEP)))
+New fact: (WALK)
+Deleted fact: (FIDGETY)
+From rule: (IF (LEAVE JEEP)
+             (FIDGETY)
+             THEN
+             (ADD (WALK))
+             (EVAL (ED-BEEP))
+             (DELETE (FIDGETY)))
+
+? (setq *rules*
+      '((if (curious ?x) then
+            (add-rule (if (rumor ?x) then (add (ask ?x)))))
+        (if (ask ?x) then
+            (add (know ?x)) (delete (curious ?x)))))
+
+? (setq *facts* '((curious trees) (curious fish) (rumor trees)))
+
+? (forward)
+NO-MORE-RULES-FIRE
+
+? (print-messages)
+New rule: (IF (RUMOR TREES) THEN (ADD (ASK TREES)))
+From rule: (IF (CURIOUS ?X) THEN
+               (ADD-RULE (IF (RUMOR ?X) THEN (ADD (ASK ?X)))))
+New fact: (ASK TREES)
+From rule: (IF (RUMOR TREES) THEN (ADD (ASK TREES)))
+New fact: (KNOW TREES)
+Deleted fact: (CURIOUS TREES)
+From rule: (IF (ASK ?X) THEN
+               (ADD (KNOW ?X)) (DELETE (CURIOUS ?X)))
+New rule: (IF (RUMOR FISH) THEN (ADD (ASK FISH)))
+From rule: (IF (CURIOUS ?X) THEN
+               (ADD-RULE (IF (RUMOR ?X) THEN (ADD (ASK ?X)))))
+NIL
+
+? (setq *rules*
+      '((if (really hungry for ?food)
+          then
+          (add (eval
+             (list 'eat ?food ?food 'and 'more ?food))))))
+
+? (setq *facts* '((really hungry for burgers)))
+
+? (forward)
+NO-MORE-RULES-FIRE
+
+? (print-messages)
+New fact: (EAT BURGERS BURGERS AND MORE BURGERS)
+From rule: (IF (REALLY HUNGRY FOR ?FOOD)
+             THEN
+             (ADD (EVAL
+               (LIST 'EAT ?FOOD ?FOOD 'AND 'MORE ?FOOD))))
+NIL
+? 
