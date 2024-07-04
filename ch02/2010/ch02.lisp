@@ -23,7 +23,7 @@
 ;;;;
 ;;;;   Example:
 ;;;;
-;;;;   Notes: REASSEMBELE as generalized tree processing function:
+;;;;   Notes: REASSEMBLE as generalized tree processing function:
 ;;;;   - EXIFY
 ;;;;   - MAKE-COPY
 ;;;;   - TREE-UPCASE
