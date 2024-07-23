@@ -467,6 +467,25 @@ intercept.
    (= 3 (tree-depth '(:c (2) :d)))
    (= 4 (tree-depth '(:e :f (3)))) ))
 
+(defun tree-depth* (obj)
+  (cond ((atom obj) 0)
+	(t (1+ (apply #'max (mapcar #'tree-depth* obj)))) ))
+
+(deftest test-tree-depth* ()
+  (check
+   (= 0 (tree-depth* 'a))
+   (= 0 (tree-depth* '()))
+   (= 1 (tree-depth* '(:a)))
+   (= 1 (tree-depth* '(:a :b)))
+   (= 1 (tree-depth* '(:a :b :c)))
+   (= 1 (tree-depth* '(:a :b () :c)))
+   (= 3 (tree-depth* '(((:a) :b) :c ((:d) :e))))
+   (= 3 (tree-depth* '(:a (:b) (:c (:d)))) )
+   (= 4 (tree-depth* '(:a (:b (:c (:d)))) ))
+   (= 2 (tree-depth* '((1) :a :b)))
+   (= 2 (tree-depth* '(:c (2) :d)))
+   (= 2 (tree-depth* '(:e :f (3)))) ))
+
 (defun quasi-balanced-p (l)
   (and (equalelts (mapcar #'length l))
        (equalelts (mapcar #'tree-depth l))))
@@ -495,3 +514,227 @@ intercept.
       (destructuring-bind (left right) tree
         (min (treemax left)
              (treemax right)))) )
+
+;'(((1 . 2) . (3 . 4)) . ((5 . (6 . 7)) . 8)) => (((1 . 2) 3 . 4) (5 6 . 7) . 8)
+;'(1 . (8 . (2 . (7 . (3 . (6 . (4 . 5))))))) => (1 8 2 7 3 6 4 . 5)
+
+;;;
+;;;    Modified functions: (destructuring-bind (left . right) tree
+;;;    
+;; (treemax '((3 . (2 . 5)) . (7 . (2 . 1))))
+;;   0: (CH02::TREEMAX ((3 2 . 5) 7 2 . 1))
+;;     1: (CH02::TREEMIN (3 2 . 5))
+;;       2: (CH02::TREEMAX 3)
+;;       2: TREEMAX returned 3
+;;       2: (CH02::TREEMAX (2 . 5))
+;;         3: (CH02::TREEMIN 2)
+;;         3: TREEMIN returned 2
+;;         3: (CH02::TREEMIN 5)
+;;         3: TREEMIN returned 5
+;;       2: TREEMAX returned 5
+;;     1: TREEMIN returned 3
+;;     1: (CH02::TREEMIN (7 2 . 1))
+;;       2: (CH02::TREEMAX 7)
+;;       2: TREEMAX returned 7
+;;       2: (CH02::TREEMAX (2 . 1))
+;;         3: (CH02::TREEMIN 2)
+;;         3: TREEMIN returned 2
+;;         3: (CH02::TREEMIN 1)
+;;         3: TREEMIN returned 1
+;;       2: TREEMAX returned 2
+;;     1: TREEMIN returned 2
+;;   0: TREEMAX returned 3
+;; 3
+
+;; (treemin '((3 . (2 . 5)) . (7 . (2 . 1))))
+;;   0: (CH02::TREEMIN ((3 2 . 5) 7 2 . 1))
+;;     1: (CH02::TREEMAX (3 2 . 5))
+;;       2: (CH02::TREEMIN 3)
+;;       2: TREEMIN returned 3
+;;       2: (CH02::TREEMIN (2 . 5))
+;;         3: (CH02::TREEMAX 2)
+;;         3: TREEMAX returned 2
+;;         3: (CH02::TREEMAX 5)
+;;         3: TREEMAX returned 5
+;;       2: TREEMIN returned 2
+;;     1: TREEMAX returned 3
+;;     1: (CH02::TREEMAX (7 2 . 1))
+;;       2: (CH02::TREEMIN 7)
+;;       2: TREEMIN returned 7
+;;       2: (CH02::TREEMIN (2 . 1))
+;;         3: (CH02::TREEMAX 2)
+;;         3: TREEMAX returned 2
+;;         3: (CH02::TREEMAX 1)
+;;         3: TREEMAX returned 1
+;;       2: TREEMIN returned 1
+;;     1: TREEMAX returned 7
+;;   0: TREEMIN returned 3
+;; 3
+
+
+;; (treemax '(1 . (8 . (2 . (7 . (3 . (6 . (4 . 5))))))))
+;;   0: (CH02::TREEMAX (1 8 2 7 3 6 4 . 5))
+;;     1: (CH02::TREEMIN 1)
+;;     1: TREEMIN returned 1
+;;     1: (CH02::TREEMIN (8 2 7 3 6 4 . 5))
+;;       2: (CH02::TREEMAX 8)
+;;       2: TREEMAX returned 8
+;;       2: (CH02::TREEMAX (2 7 3 6 4 . 5))
+;;         3: (CH02::TREEMIN 2)
+;;         3: TREEMIN returned 2
+;;         3: (CH02::TREEMIN (7 3 6 4 . 5))
+;;           4: (CH02::TREEMAX 7)
+;;           4: TREEMAX returned 7
+;;           4: (CH02::TREEMAX (3 6 4 . 5))
+;;             5: (CH02::TREEMIN 3)
+;;             5: TREEMIN returned 3
+;;             5: (CH02::TREEMIN (6 4 . 5))
+;;               6: (CH02::TREEMAX 6)
+;;               6: TREEMAX returned 6
+;;               6: (CH02::TREEMAX (4 . 5))
+;;                 7: (CH02::TREEMIN 4)
+;;                 7: TREEMIN returned 4
+;;                 7: (CH02::TREEMIN 5)
+;;                 7: TREEMIN returned 5
+;;               6: TREEMAX returned 5
+;;             5: TREEMIN returned 5
+;;           4: TREEMAX returned 5
+;;         3: TREEMIN returned 5
+;;       2: TREEMAX returned 5
+;;     1: TREEMIN returned 5
+;;   0: TREEMAX returned 5
+;; 5
+
+;; (treemin '(1 . (8 . (2 . (7 . (3 . (6 . (4 . 5))))))))
+;;   0: (CH02::TREEMIN (1 8 2 7 3 6 4 . 5))
+;;     1: (CH02::TREEMAX 1)
+;;     1: TREEMAX returned 1
+;;     1: (CH02::TREEMAX (8 2 7 3 6 4 . 5))
+;;       2: (CH02::TREEMIN 8)
+;;       2: TREEMIN returned 8
+;;       2: (CH02::TREEMIN (2 7 3 6 4 . 5))
+;;         3: (CH02::TREEMAX 2)
+;;         3: TREEMAX returned 2
+;;         3: (CH02::TREEMAX (7 3 6 4 . 5))
+;;           4: (CH02::TREEMIN 7)
+;;           4: TREEMIN returned 7
+;;           4: (CH02::TREEMIN (3 6 4 . 5))
+;;             5: (CH02::TREEMAX 3)
+;;             5: TREEMAX returned 3
+;;             5: (CH02::TREEMAX (6 4 . 5))
+;;               6: (CH02::TREEMIN 6)
+;;               6: TREEMIN returned 6
+;;               6: (CH02::TREEMIN (4 . 5))
+;;                 7: (CH02::TREEMAX 4)
+;;                 7: TREEMAX returned 4
+;;                 7: (CH02::TREEMAX 5)
+;;                 7: TREEMAX returned 5
+;;               6: TREEMIN returned 4
+;;             5: TREEMAX returned 6
+;;           4: TREEMIN returned 3
+;;         3: TREEMAX returned 7
+;;       2: TREEMIN returned 2
+;;     1: TREEMAX returned 8
+;;   0: TREEMIN returned 1
+;; 1
+
+
+;; (treemax '(((1 . 2) . (3 . 4)) . ((5 . (6 . 7)) . 8)))
+;;   0: (CH02::TREEMAX (((1 . 2) 3 . 4) (5 6 . 7) . 8))
+;;     1: (CH02::TREEMIN ((1 . 2) 3 . 4))
+;;       2: (CH02::TREEMAX (1 . 2))
+;;         3: (CH02::TREEMIN 1)
+;;         3: TREEMIN returned 1
+;;         3: (CH02::TREEMIN 2)
+;;         3: TREEMIN returned 2
+;;       2: TREEMAX returned 2
+;;       2: (CH02::TREEMAX (3 . 4))
+;;         3: (CH02::TREEMIN 3)
+;;         3: TREEMIN returned 3
+;;         3: (CH02::TREEMIN 4)
+;;         3: TREEMIN returned 4
+;;       2: TREEMAX returned 4
+;;     1: TREEMIN returned 2
+;;     1: (CH02::TREEMIN ((5 6 . 7) . 8))
+;;       2: (CH02::TREEMAX (5 6 . 7))
+;;         3: (CH02::TREEMIN 5)
+;;         3: TREEMIN returned 5
+;;         3: (CH02::TREEMIN (6 . 7))
+;;           4: (CH02::TREEMAX 6)
+;;           4: TREEMAX returned 6
+;;           4: (CH02::TREEMAX 7)
+;;           4: TREEMAX returned 7
+;;         3: TREEMIN returned 6
+;;       2: TREEMAX returned 6
+;;       2: (CH02::TREEMAX 8)
+;;       2: TREEMAX returned 8
+;;     1: TREEMIN returned 6
+;;   0: TREEMAX returned 6
+;; 6
+
+;; (treemin '(((1 . 2) . (3 . 4)) . ((5 . (6 . 7)) . 8)))
+;;   0: (CH02::TREEMIN (((1 . 2) 3 . 4) (5 6 . 7) . 8))
+;;     1: (CH02::TREEMAX ((1 . 2) 3 . 4))
+;;       2: (CH02::TREEMIN (1 . 2))
+;;         3: (CH02::TREEMAX 1)
+;;         3: TREEMAX returned 1
+;;         3: (CH02::TREEMAX 2)
+;;         3: TREEMAX returned 2
+;;       2: TREEMIN returned 1
+;;       2: (CH02::TREEMIN (3 . 4))
+;;         3: (CH02::TREEMAX 3)
+;;         3: TREEMAX returned 3
+;;         3: (CH02::TREEMAX 4)
+;;         3: TREEMAX returned 4
+;;       2: TREEMIN returned 3
+;;     1: TREEMAX returned 3
+;;     1: (CH02::TREEMAX ((5 6 . 7) . 8))
+;;       2: (CH02::TREEMIN (5 6 . 7))
+;;         3: (CH02::TREEMAX 5)
+;;         3: TREEMAX returned 5
+;;         3: (CH02::TREEMAX (6 . 7))
+;;           4: (CH02::TREEMIN 6)
+;;           4: TREEMIN returned 6
+;;           4: (CH02::TREEMIN 7)
+;;           4: TREEMIN returned 7
+;;         3: TREEMAX returned 7
+;;       2: TREEMIN returned 5
+;;       2: (CH02::TREEMIN 8)
+;;       2: TREEMIN returned 8
+;;     1: TREEMAX returned 8
+;;   0: TREEMIN returned 3
+;; 3
+
+(deftest test-minmax ()
+  (check
+   (= 7 (treemax 7))
+   (= 7 (treemin 7))
+   (= 7 (treemax '(7 (2 1))))
+   (= 2 (treemin '(7 (2 1))))
+   (= 3 (treemax '((3 (2 5)) (7 (2 1)))) )
+   (= 3 (treemin '((3 (2 5)) (7 (2 1)))) )
+   (= 6 (treemax '(((1 2) (3 4)) ((5 (6 7)) 8))))
+   (= 3 (treemin '(((1 2) (3 4)) ((5 (6 7)) 8))))
+   (= 5 (treemax '(1 (8 (2 (7 (3 (6 (4 5)))) )))) )
+   (= 1 (treemin '(1 (8 (2 (7 (3 (6 (4 5)))) )))) )))
+
+;;;
+;;;    Ex. 16
+;;;    
+(defun make-past (present)
+  (mapcar #'(lambda (word)
+              (cond ((eql word 'am) 'was)
+                    ((eql word 'are) 'were)
+                    ((eql word 'is) 'was)
+                    (t word)))
+          present))
+
+(defun make-past (present)
+  (mapcar #'(lambda (word)
+              (case word
+                ((am is) 'was)
+                (are 'were)
+                (otherwise word)))
+          present))
+
+;(make-past '(mt st helens is an active volcano)) => (MT ST HELENS WAS AN ACTIVE VOLCANO)
