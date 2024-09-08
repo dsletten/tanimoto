@@ -387,9 +387,9 @@ intercept.
         (if (null xs)
             t
             (destructuring-bind (y . ys) xs
-              (if (null ys)
-                  (equal x y)
-                  (equalelts xs)))) )))
+              (and (equal x y)
+                   (or (null ys)
+                       (equalelts xs)))) ))))
 
 (defun equalelts (l)
   (cond ((null l) t)
@@ -418,6 +418,9 @@ intercept.
    (not (equalelts '(a a b)))
    (not (equalelts '(a a a b)))
    (not (equalelts '(a b c d)))
+   (not (equalelts '(a b b)))
+   (not (equalelts '(a a b b)))
+   (not (equalelts '(a c d b b)))
    (equalelts '((a b) (a b) (a b)))
    (equalelts '("foo" "foo" "foo" "foo"))
    (not (equalelts '("foo" "foo" "Foo" "foo")))
@@ -721,20 +724,219 @@ intercept.
 ;;;
 ;;;    Ex. 16
 ;;;    
-(defun make-past (present)
-  (mapcar #'(lambda (word)
-              (cond ((eql word 'am) 'was)
-                    ((eql word 'are) 'were)
-                    ((eql word 'is) 'was)
-                    (t word)))
-          present))
+(let* ((opposites '((good bad)
+                    (tall short)
+                    (right wrong)
+                    (left right)
+                    (hot cold)
+                    (heavy light)
+                    (skinny fat)
+                    (strong weak)
+                    (rich poor)
+                    (old young)
+                    (inner outer)
+                    (new old) ; !
+                    (winner loser)
+                    (fast slow)))
+       (opposites* (mapcar #'reverse opposites)))
+  (defun opposite (word)
+    (if-let (opp (assoc word opposites))
+        (second opp)
+      (if-let (opp* (assoc word opposites*))
+          (second opp*)
+        word))))
 
-(defun make-past (present)
-  (mapcar #'(lambda (word)
-              (case word
-                ((am is) 'was)
-                (are 'were)
-                (otherwise word)))
-          present))
+(defun make-opposites (sentence)
+  (mapcar #'opposite sentence))
 
-;(make-past '(mt st helens is an active volcano)) => (MT ST HELENS WAS AN ACTIVE VOLCANO)
+(deftest test-make-opposites ()
+  (check
+   (equal '(THE SHORT MAN IS YOUNG) (make-opposites '(the tall man is old)))
+   (equal '(A OLD CAR IS SLOW) (make-opposites '(a new car is fast)))
+   (equal '(THE SKINNY POOR GIRL IS VERY LIGHT) (make-opposites '(the fat rich girl is very heavy)))
+   (equal '(A COLD CUP OF COFFEE IS ALWAYS BAD) (make-opposites '(a hot cup of coffee is always good)))) )
+
+;;;
+;;;    Ex. 17
+;;;
+(defun sentence-mood (sentence)
+  (labels ((interrogativep (sentence)
+             (member (first sentence) '(who what when where how why)))
+           (imperativep (sentence)
+             (member (first sentence) '(hold go take do make help leave run excuse dig give)))
+           (indicativep (sentence)
+             (declare (ignore sentence))
+             t)
+           (classify (sentence)
+             (cond ((interrogativep sentence) "an interrogative")
+                   ((imperativep sentence) "an imperative")
+                   ((indicativep sentence) "an indicative")
+                   (t "an unusual"))))
+    (format nil "This probably ~A sentence." (classify sentence))))
+
+
+(deftest test-sentence-mood ()
+  (check
+   (equal "This probably an interrogative sentence."
+          (sentence-mood '(why is lisp so popular?)))
+   (equal "This probably an imperative sentence."
+          (sentence-mood '(make a new attempt at the assignment)))
+   (equal "This probably an indicative sentence."
+          (sentence-mood '(the sky is blue)))
+   (equal "This probably an interrogative sentence."
+          (sentence-mood '(where did that thing come from?)))
+   (equal "This probably an imperative sentence."
+          (sentence-mood '(hold my beer!)))
+   (equal "This probably an indicative sentence."
+          (sentence-mood '(we have nothing to fear but fear itself)))
+   (equal "This probably an imperative sentence."
+          (sentence-mood '(do not ask what your country can do for you)))
+   (equal "This probably an interrogative sentence."
+          (sentence-mood '(why is it so hard to make it in america?)))) )
+
+;;;
+;;;    Ex. 20
+;;;
+;; (defun permutations (l)
+;;   (labels ((permute (in out)
+;;              (cond ((null in) '())
+;;                    (t (destructuring-bind (elt . more) in
+;;                         (append (mapcar #'(lambda (l) (cons elt l)) (permute out '()))
+;;                                 (permute more (cons elt out)))) ))))
+;;     (permute l '())))
+
+(defun permutations (l)
+  (permute l '()))
+
+(defun permute (in out)
+  (cond ((null in) (list '()))
+        (t (destructuring-bind (elt . more) in
+             (let ((a (mapcar #'(lambda (l) (cons elt l))
+                              (permute (append more out) '()))))
+               (if (null more)
+                   a
+                   (append a (permute more (cons elt out)))) )))) )
+                     
+
+(defun permutations2 (l)
+  (if (null l)
+      (list '())
+      (mapcan #'(lambda (cycle)
+                  (mapcar #'(lambda (l1)
+                              (cons (first cycle) l1))
+                          (permutations2 (rest cycle))))
+              (cycles l))))
+
+(defun cycles (l)
+  (loop for out = () then (cons (first in) out)
+        for in on l
+        collect (append in out)))
+
+;;;
+;;;    见 ~/lisp/programs/combinatorics/permute.lisp
+;;;    
+(defun permute-3 (l1)
+  (cond ((null l1) (list '()))
+	(t (cycle-list l1 '()))) )
+
+(defun cycle-list (l1 l2)
+  (cond ((null l1) '())
+	(t (cycle-list-aux (car l1) (cdr l1) l2
+			   (cycle-list (cdr l1) (cons (car l1) l2)))) ))
+
+(defun cycle-list-aux (elt l1 l2 result)
+  (cond ((null l1) (spread-elt elt (permute-3 l2) result))
+	(t (cycle-list-aux elt (cdr l1) (cons (car l1) l2) result))))
+
+(defun spread-elt (elt partial result)
+  (cond ((null partial) result)
+	(t (cons (cons elt (car partial))
+		 (spread-elt elt (cdr partial) result)))) )
+(defun spread-elt (elt partial result)
+  (if (endp partial)
+      result
+      (destructuring-bind (l . more) partial
+        (cons (cons elt l) (spread-elt elt more result)))) )
+
+;;;
+;;;    Don't care about order -> TR
+;;;    
+(defun spread-elt2 (elt partial result)
+  (if (endp partial)
+      result
+      (destructuring-bind (l . more) partial
+        (spread-elt elt more (cons (cons elt l) result)))) )
+
+(defun spread-elt* (elt partial)
+  (mapcar #'(lambda (l) (cons elt l)) partial))
+;;;
+;;;    Ex. 21
+;;;
+(defun next (seq)
+  (labels ((arithmeticp (seq)
+             (let ((diff (- (second seq) (first seq))))
+               (if (every #'(lambda (x y) (= diff (- y x))) seq (rest seq))
+                   #'(lambda (x) (+ x diff))
+                   nil)))
+           (geometricp (seq)
+             (let ((factor (/ (second seq) (first seq))))
+               (if (every #'(lambda (x y) (= factor (/ y x))) seq (rest seq))
+                   #'(lambda (x) (* x factor))
+                   nil))))
+    (if-let (arithmetic (arithmeticp seq))
+        (apply arithmetic (last seq))
+      (if-let (geometric (geometricp seq))
+          (apply geometric (last seq))
+        'unknown))))
+
+(deftest test-next ()
+  (check
+   (= 10 (next '(2 4 6 8)))
+   (= 0 (next '(8 6 4 2)))
+   (= 324 (next '(4 -12 36 -108)))
+   (= 64 (next '(1 2 4 8 16 32)))
+   (= 1 (next '(64 32 16 8 4 2)))
+   (= 1 (next '(1 -1 1 -1)))
+   (= -1 (next '(1 -1 1 -1 1)))
+   (= 6 (next '(10 9 8 7)))
+   (equal 'UNKNOWN (next '(2 3 5 7 11)))) )
+
+;;;
+;;;    Ex. 22
+;;;
+(setf (get 'daffodil :color) 'yellow
+      (get 'daffodil :family) 'amaryllidaceae)
+
+;;;
+;;;    Ex. 23
+;;;
+(defun simplify (expr)
+  (cond ((symbolp expr) expr)
+        ((numberp expr) expr)
+        (t (ecase (first expr)
+             (+ (simplify-sum expr))
+             (* (simplify-product expr)))) ))
+
+(defun simplify-sum (expr)
+  (let ((args (remove 0 (mapcar #'simplify (rest expr)) :test #'equalp)))
+    (if (= (length args) 1)
+        (first args)
+        (cons '+ args))))
+
+(defun simplify-product (expr)
+  (let ((args (remove 1 (mapcar #'simplify (rest expr)) :test #'equalp)))
+    (cond ((some #'(lambda (x) (equalp x 0)) args) 0)
+          ((= (length args) 1) (first args))
+          (t (cons '* args)))) )
+
+(deftest test-simplify ()
+  (check
+   (equal '(+ X 3) (simplify '(+ x 3)))
+   (equal '(* X 3) (simplify '(* x 3)))
+   (equal 'x (simplify '(+ x 0)))
+   (equal 'x (simplify '(* x 1)))
+   (equal 0 (simplify '(* x 3 0)))
+   (equal 'y (simplify '(+ y (* x 3 0))))
+   (equal '(+ X 3 5) (simplify '(+ x 3 5 (* (* x y z) 0))))
+   (equal 'x (simplify '(* x (+ 1 (* 0 3)))) )
+   (equal '(* X 5) (simplify '(* x (+ 1 (* 0 3)) 5)))) )

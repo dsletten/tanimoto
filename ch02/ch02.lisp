@@ -20,7 +20,7 @@
 ;;;;
 ;;;;   Example:
 ;;;;
-;;;;   Notes:
+;;;;   Notes: Tanimoto 1e.
 ;;;;
 ;;;;
 (load "/Users/dsletten/lisp/programs/utils.lisp")

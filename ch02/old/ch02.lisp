@@ -19,7 +19,7 @@
 ;;;
 ;;;   EXAMPLE:
 ;;;
-;;;   NOTES:
+;;;   NOTES: Tanimoto 1e.
 ;;;
 ;;;
 (load "~/lisp/programs/utils.lisp")
