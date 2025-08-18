@@ -1,0 +1,95 @@
+================================================================================
+roman1.lisp
+Simple unordered production system
+
+roman1a is semi-unordered. Validation of input is initial check.
+================================================================================
+roman1x.lisp, roman1y.lisp, roman1y.lisp
+Similar to roman1.lisp, but these demonstrate that rules can be reordered w/o
+consequence. Their rules are literally shuffled from roman1.lisp.
+
+================================================================================
+roman2.lisp
+Ordered production system. Conditions of rules are simplified. Consequently, the
+order is now significant.
+
+================================================================================
+roman3.lisp
+Discrimination net. Rules arranged to minimize number of decisions.
+
+================================================================================
+roman3a.lisp
+Better balanced tree than roman3.lisp
+
+================================================================================
+roman-dn.lisp
+Discrimination net. Uses DEFNET macro. Supports full range of Roman Numerals up to 3999
+
+================================================================================
+roman-fp.lisp
+FP style (Derived from roman1a). No side effects to DB. (Implicit side effect with string output stream.)
+
+roman* is fully side-effect free.
+================================================================================
+hanoi/hanoi1.lisp
+
+hanoi/hanoi2.lisp
+
+hanoi/hanoi-dn.lisp
+
+================================================================================
+primes/primes1.lisp
+
+primes/primes2.lisp
+
+primes/primes3.lisp
+
+primes/primes-dn.lisp
+Discrimination nets for prime number check. Includes caches.
+
+What to do about rule that always fires when reached? I.e., all preceding conditions have failed.
+For example, increase factor in prime number check. There is no real test and consequently no real action
+for the failure path.
+================================================================================
+discrimination-net.lisp
+General purpose classes/macro for defining discrimination nets.
+
+discrimination-net.lisp:(defclass node ()
+discrimination-net.lisp:(defclass action ()
+discrimination-net.lisp:(defclass discrimination-net ()
+
+discrimination-net.lisp:(defmacro defnet (sym category &rest node-list)
+
+
+
+================================================================================
+production-system.lisp
+
+
+production-system.lisp:(defmacro defproductions ((&rest bindings) &body rules)
+
+PSCOND macro for debugging
+
+
+
+
+
+uninitialized/initialized rules subclasses
+
+
+
+
+================================================================================
+References
+Luger/Stubblefield §5.2 High level discussion
+                   §6.2.1 Prolog
+
+AI Programming (Charniak, et al.) has chapters on discrimination nets (ch. 8,11) before chapter
+on production systems (ch. 12). Ch. 12 uses XPS lang (simplified OPS5).
+
+Programming for AI (Kreutzer/McKenzie)
+§3.4 Production Systems
+304 页 Exercises with sources from many other books.
+
+Looking at Lisp ch.9 Production Systems  <---    Read after Tanimoto
+- Tower of Hanoi (Brahma) 229 页

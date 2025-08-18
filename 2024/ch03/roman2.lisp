@@ -25,9 +25,10 @@
 ;;;;
 ;;;;
 (load "/home/slytobias/lisp/packages/core.lisp")
-(load "/home/slytobias/lisp/packages/test.lisp")
+(load "/home/slytobias/lisp/packages/io.lisp")
+(load "/home/slytobias/lisp/books/Tanimoto/2024/ch03/production-system.lisp")
 
-(defpackage :roman2 (:use :common-lisp :core :test))
+(defpackage :roman2 (:use :common-lisp :core :io :production-system))
 
 (in-package :roman2)
 
@@ -56,5 +57,29 @@
                 (t (format t "~%")
                    (setf x nil)))) ))
 
-                
-                 
+(defun roman2* ()
+  (let ((x nil)
+        (s (make-string-output-stream)))
+    (loop (pscond ((null x)
+                   (setf x (get-num "Enter number: "
+                                    :test (conjoin #'integerp (complement #'minusp)))))
+                ((> x 39)
+                 (format t "Too big.~%")
+                 (setf x nil))
+                ((> x 9)
+                 (format s "X")
+                 (decf x 10))
+                ((= x 9)
+                 (format s "IX")
+                 (setf x 0))
+                ((> x 4)
+                 (format s "V")
+                 (decf x 5))
+                ((= x 4)
+                 (format s "IV")
+                 (setf x 0))
+                ((> x 0)
+                 (format s "I")
+                 (decf x))
+                (t (format t "~A~%" (get-output-stream-string s))
+                   (setf x nil)))) ))

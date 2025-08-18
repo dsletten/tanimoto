@@ -1,4 +1,4 @@
-#!/usr/bin/sbcl --script
+;#!/usr/bin/sbcl --script
 ;;;;   Hey, Emacs, this is a -*- Mode: Lisp; Syntax: Common-Lisp -*- file!
 ;;;;
 ;;;;   Lisp is a language for doing what you've been told is impossible.
@@ -26,16 +26,18 @@
 ;;;;
 ;;;;
 (load "/home/slytobias/lisp/packages/core.lisp")
+(load "/home/slytobias/lisp/packages/io.lisp")
 (load "/home/slytobias/lisp/books/Tanimoto/2024/ch03/discrimination-net.lisp")
 
-(defpackage :roman-dn (:use :common-lisp :core :discrimination-net))
+(defpackage :roman-dn (:use :common-lisp :core :io :discrimination-net))
 
 (in-package :roman-dn)
 
 (let ((x nil))
   (defnet *roman* "Roman numerals"
     (start (null x)
-      (setf x (get-num "Enter number: " :test #'integerp)) 
+      (setf x (get-num "Enter number: "
+                       :test (conjoin #'integerp (complement #'minusp)))) 
       greater4)
     (greater4 (> x 4)
       greater9
@@ -59,7 +61,8 @@
 (let ((x nil))
   (defnet *roman3999* "Roman numerals"
     (start (null x)
-      (setf x (get-num "Enter number: " :test #'integerp))
+      (setf x (get-num "Enter number: "
+                       :test (conjoin #'integerp (complement #'minusp))))
       >=100)
     (>=100 (>= x 100)
       >=500
@@ -104,4 +107,54 @@
       (progn (format t "IV") (decf x 4))
       (progn (format t "I") (decf x)))) )
 
-(run *roman3999* 'start)
+(let ((x nil)
+      (s (make-string-output-stream)))
+  (defnet *roman3999a* "Roman numerals"
+    (start (null x)
+      (setf x (get-num "Enter number: "
+                       :test (conjoin #'integerp (complement #'minusp))))
+      >=100)
+    (>=100 (>= x 100)
+      >=500
+      >=50)
+    (>=500 (>= x 500)
+      >=1000
+      >=400)
+    (>=1000 (>= x 1000)
+      >3999
+      >=900)
+    (>3999 (> x 3999)
+      (progn (format t "Too big.~%") (setf x nil))
+      (progn (format s "M") (decf x 1000)))
+    (>=900 (>= x 900)
+      (progn (format s "CM") (decf x 900))
+      (progn (format s "D") (decf x 500)))
+    (>=400 (>= x 400)
+      (progn (format s "CD") (decf x 400))
+      (progn (format s "C") (decf x 100)))
+    (>=50 (>= x 50)
+      >=90
+      >=10)
+    (>=90 (>= x 90)
+      (progn (format s "XC") (decf x 90))
+      (progn (format s "L") (decf x 50)))
+    (>=10 (>= x 10)
+      >=40
+      >=5)
+    (>=40 (>= x 40)
+      (progn (format s "XL") (decf x 40))
+      (progn (format s "X") (decf x 10)))
+    (>=5 (>= x 5)
+      =9
+      >0)
+    (=9 (= x 9)
+        (progn (format s "IX") (decf x 9))
+        (progn (format s "V") (decf x 5)))
+    (>0 (> x 0)
+      =4
+      (progn (format t "~A~%" (get-output-stream-string s)) (setf x nil)))
+    (=4 (= x 4)
+      (progn (format s "IV") (decf x 4))
+      (progn (format s "I") (decf x)))) )
+
+(run *roman3999a* 'start)

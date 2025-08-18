@@ -25,16 +25,17 @@
 ;;;;
 ;;;;
 (load "/home/slytobias/lisp/packages/core.lisp")
-(load "/home/slytobias/lisp/packages/test.lisp")
+(load "/home/slytobias/lisp/packages/io.lisp")
 
-(defpackage :roman3a (:use :common-lisp :core :test))
+(defpackage :roman3a (:use :common-lisp :core :io))
 
 (in-package :roman3a)
 
 (defun roman3a ()
   (let ((x nil))
     (loop (if (null x)
-              (setf x (get-num "Enter number: " :test #'integerp))
+              (setf x (get-num "Enter number: "
+                          :test (conjoin #'integerp (complement #'minusp))))
               (if (> x 4)
                   (if (> x 9)
                       (if (> x 39)

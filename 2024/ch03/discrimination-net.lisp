@@ -52,6 +52,13 @@
    (true :reader true :initarg :true :type (or symbol action))
    (false :reader false :initarg :false :type (or symbol action))))
 
+(defmethod print-object ((n node) stream)
+  (print-unreadable-object (n stream :type t)
+    (format stream "~A ~S" (name n) (test n)))) ; ?!?!? TEST is not a reader!
+
+(defclass action ()
+  ((operation :reader operation :initarg :operation)))
+
 (defun test (node)
   (with-slots (test) node
     (funcall test)))
@@ -64,13 +71,6 @@
       (make-instance 'action :operation node-case)
       node-case))
 
-(defmethod print-object ((n node) stream)
-  (print-unreadable-object (n stream :type t)
-    (format stream "~A ~S" (name n) (test n))))
-
-(defclass action ()
-  ((operation :reader operation :initarg :operation)))
-
 (defgeneric fire (action)
   (:documentation "Invoke the action's operation."))
 (defmethod fire ((a action))
@@ -78,13 +78,13 @@
 
 (defclass discrimination-net ()
   ((category :reader category :initarg :category)
-   (nodes :reader nodes :initform (make-hash-table))))
+   (nodes :reader nodes :initform (make-hash-table :test #'equal))))
 
 (defun make-discrimination-net (category node-list)
   (let ((net (make-instance 'discrimination-net :category category)))
     (with-slots (nodes) net
       (dolist (node node-list)
-        (setf (gethash (name node) nodes) node)))
+        (setf (gethash (string (name node)) nodes) node)))
     net))
 
 (defmethod print-object ((net discrimination-net) stream)
@@ -110,7 +110,7 @@
   (:documentation "Locate a node specified by NAME in NET."))
 (defmethod find-node ((net discrimination-net) (name symbol))
   (with-slots (nodes) net
-    (gethash name nodes)))
+    (gethash (string name) nodes)))
 
 (defgeneric process-node (net name)
   (:documentation "Process the node specified by NAME."))
@@ -126,6 +126,7 @@
   (labels ((execute (current-node)
              (typecase current-node
                (null (format t "At a loss here...~%"))
-               (action (fire current-node) (execute start))
-               (otherwise (execute (process-node net current-node)))) ))
+               (action (format t "Firing.~%") (fire current-node) (execute start))
+               (otherwise (format t "Examining: ~A~%" (name (find-node net current-node)))
+                          (execute (process-node net current-node)))) ))
     (execute start)))

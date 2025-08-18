@@ -378,7 +378,7 @@ intercept.
           (doubles '(x y (z w)))) ))
 
 ;;;
-;;;    Ex. 13
+;;;    Ex. 13 (见 Touretzky ex. 8.22)
 ;;;
 (defun equalelts (l)
   (if (null l)
@@ -865,7 +865,7 @@ intercept.
   (if (endp partial)
       result
       (destructuring-bind (l . more) partial
-        (spread-elt elt more (cons (cons elt l) result)))) )
+        (spread-elt2 elt more (cons (cons elt l) result)))) )
 
 (defun spread-elt* (elt partial)
   (mapcar #'(lambda (l) (cons elt l)) partial))
