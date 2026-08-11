@@ -25,8 +25,8 @@
 ;;;;   Notes:
 ;;;;
 ;;;;
-(load "/home/slytobias/lisp/packages/core.lisp")
-(load "/home/slytobias/lisp/packages/io.lisp")
+(load "/home/slytobias/lisp/packages/core")
+(load "/home/slytobias/lisp/packages/io")
 (load "/home/slytobias/lisp/books/Tanimoto/2024/ch03/discrimination-net.lisp")
 
 (defpackage :roman-dn (:use :common-lisp :core :io :discrimination-net))

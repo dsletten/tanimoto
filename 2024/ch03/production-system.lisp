@@ -24,8 +24,8 @@
 ;;;;   Notes:
 ;;;;
 ;;;;
-(load "/home/slytobias/lisp/packages/core.lisp")
-(load "/home/slytobias/lisp/packages/test.lisp")
+(load "/home/slytobias/lisp/packages/core")
+(load "/home/slytobias/lisp/packages/test")
 
 (defpackage :production-system
   (:use :common-lisp :core :test)

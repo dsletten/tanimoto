@@ -24,10 +24,11 @@
 ;;;;   Notes:
 ;;;;
 ;;;;
-(load "/home/slytobias/lisp/packages/core.lisp")
-(load "/home/slytobias/lisp/packages/io.lisp")
-(load "/home/slytobias/lisp/packages/hanoi.lisp")
-(load "/home/slytobias/lisp/books/Tanimoto/2024/ch03/production-system.lisp")
+(load "/home/slytobias/lisp/packages/core")
+(load "/home/slytobias/lisp/packages/io")
+(load "/home/slytobias/lisp/packages/hanoi")
+;(load "/home/slytobias/lisp/books/Tanimoto/2024/ch03/production-system.lisp")
+(load "/home/slytobias/Thelio/modified/lisp/books/Tanimoto/2024/ch03/production-system.lisp")
 
 (defpackage :hanoi2
   (:use :common-lisp :core :io :hanoi :production-system)
@@ -40,7 +41,7 @@
     (loop (if (null temple)
               (setf temple (make-temple :a (add-disks (make-instance 'peg)
                                                       (loop for i from 1 to (get-num "Enter number of disks: "
-                                                                                     :test (every-pred #'integerp
+                                                                                     :test (conjoin #'integerp
                                                                                                        #'(lambda (n) (<= 1 n 6))))
                                                             collect i)))
                     move 0)
@@ -102,7 +103,7 @@
       (loop (if (null temple)
                 (setf temple (make-temple :a (add-disks (make-instance 'peg)
                                                         (loop for i from 1 to (get-num "Enter number of disks: "
-                                                                                       :test (every-pred #'integerp
+                                                                                       :test (conjoin #'integerp
                                                                                                          #'(lambda (n) (<= 1 n 6))))
                                                               collect i)))
                       move 0)
@@ -167,7 +168,7 @@
         (loop (pscond ((null temple)
                        (setf temple (make-temple :a (add-disks (make-instance 'peg)
                                                                (loop for i from 1 to (get-num "Enter number of disks: "
-                                                                                              :test (every-pred #'integerp
+                                                                                              :test (conjoin #'integerp
                                                                                                                 #'(lambda (n) (<= 1 n 6))))
                                                                      collect i)))
                              current :a

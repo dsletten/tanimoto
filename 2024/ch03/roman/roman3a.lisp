@@ -24,8 +24,8 @@
 ;;;;   Notes: Arrange rules as discrimination net. Better balanced tree!
 ;;;;
 ;;;;
-(load "/home/slytobias/lisp/packages/core.lisp")
-(load "/home/slytobias/lisp/packages/io.lisp")
+(load "/home/slytobias/lisp/packages/core")
+(load "/home/slytobias/lisp/packages/io")
 
 (defpackage :roman3a (:use :common-lisp :core :io))
 

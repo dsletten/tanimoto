@@ -1,56 +1,144 @@
-================================================================================
+============================================================================
+☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆
+============================================================================
+roman
+========================================
 roman1.lisp
 Simple unordered production system
 
-roman1a is semi-unordered. Validation of input is initial check.
-================================================================================
-roman1x.lisp, roman1y.lisp, roman1y.lisp
+ROMAN1A is semi-unordered. Validation of input is initial check.
+Utilizes PSCOND to display which rules were trigered.
+========================================
+roman1x.lisp, roman1y.lisp, roman1z.lisp
 Similar to roman1.lisp, but these demonstrate that rules can be reordered w/o
 consequence. Their rules are literally shuffled from roman1.lisp.
-
-================================================================================
+========================================
 roman2.lisp
 Ordered production system. Conditions of rules are simplified. Consequently, the
 order is now significant.
-
-================================================================================
+========================================
 roman3.lisp
 Discrimination net. Rules arranged to minimize number of decisions.
-
-================================================================================
+========================================
 roman3a.lisp
 Better balanced tree than roman3.lisp
-
-================================================================================
+========================================
 roman-dn.lisp
 Discrimination net. Uses DEFNET macro. Supports full range of Roman Numerals up to 3999
-
-================================================================================
+========================================
 roman-fp.lisp
-FP style (Derived from roman1a). No side effects to DB. (Implicit side effect with string output stream.)
+FP style (Derived from ROMAN1A). No side effects to DB. (Implicit side effect with string output stream.)
 
-roman* is fully side-effect free.
-================================================================================
-hanoi/hanoi1.lisp
+ROMAN* is fully side-effect free.
+============================================================================
+☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆
+============================================================================
+hanoi
+========================================
+hanoi1.lisp
+Unordered production system
+========================================
+hanoi2.lisp
+Ordered production system
+========================================
+hanoi-dn.lisp
+============================================================================
+☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆
+============================================================================
+primes
+========================================
+primes1.lisp
+Unordered production system
+Includes shuffled variants to demonstrate no reliance on order.
+========================================
+primes2.lisp
+Ordered production system
+========================================
+primes3.lisp
+========================================
 
-hanoi/hanoi2.lisp
-
-hanoi/hanoi-dn.lisp
-
-================================================================================
-primes/primes1.lisp
-
-primes/primes2.lisp
-
-primes/primes3.lisp
-
-primes/primes-dn.lisp
+primes-dn.lisp
 Discrimination nets for prime number check. Includes caches.
 
 What to do about rule that always fires when reached? I.e., all preceding conditions have failed.
 For example, increase factor in prime number check. There is no real test and consequently no real action
 for the failure path.
+============================================================================
+☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆
+============================================================================
+accumulate
+========================================
+Experiments with FILTERED-ACCUMULATE from SICP ch. 1 ex. 1.33
+============================================================================
+☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆
+============================================================================
+animals
+========================================
+animals.lisp
+20 Questions
+============================================================================
+☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆
+============================================================================
+auto
+========================================
+auto-dn.lisp
+Touretzky discrimination net exercise
+============================================================================
+☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆
+============================================================================
+fibonacci
+========================================
+The FAST-FIB-ITER algorithm from SICP ch. 1 ex. 1.19
+============================================================================
+☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆
+============================================================================
+lincoln
+========================================
+20-questions.lisp
+Graham example
+============================================================================
+☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆
+============================================================================
+lingvoj
+========================================
+english.lisp
+Convert integer to English text
+
+ENGLISH-FP and ENGLISH-FP2 - no side effects.
+========================================
+german.lisp
+========================================
+汉语.lisp
+============================================================================
+☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆
+============================================================================
+median
+========================================
+median-dn.lisp
+Discrimination net (DEFNET). Find median of 3 numbers.
+============================================================================
+☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆
+============================================================================
+shrink
+========================================
+match.lisp
+Evolution of the MATCH predicate culminating in MATCH6 (Exported as MATCH).
+Tanimoto describes MATCH as being "very much in the production-system style".
+It looks like an FP version of PS-MATCH below, using recursive calls rather
+than a simple LOOP, and avoiding side effects.
+========================================
+ps-match.lisp
+A more conventional implementation of MATCH as a production system.
+This is a hybrid of recursive calls along with destructively modifying the "DB"
+as the other production systems do.
+========================================
+shrink.lisp
+"ELIZA"
+Incorporates ideas from PAIP too.
 ================================================================================
+
+
+
 discrimination-net.lisp
 General purpose classes/macro for defining discrimination nets.
 

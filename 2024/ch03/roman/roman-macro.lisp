@@ -24,11 +24,13 @@
 ;;;;   Notes:
 ;;;;
 ;;;;
-(load "/home/slytobias/lisp/packages/core.lisp")
-(load "/home/slytobias/lisp/packages/test.lisp")
-(load "/home/slytobias/lisp/books/Tanimoto/2024/ch03/production-system.lisp")
+(load "/home/slytobias/lisp/packages/core")
+(load "/home/slytobias/lisp/packages/io")
+(load "/home/slytobias/lisp/packages/test")
+;(load "/home/slytobias/lisp/books/Tanimoto/2024/ch03/production-system.lisp")
+(load "/home/slytobias/Thelio/modified/lisp/books/Tanimoto/2024/ch03/production-system.lisp")
 
-(defpackage :roman-macro (:use :common-lisp :core :test :production-system))
+(defpackage :roman-macro (:use :common-lisp :core :test :io :production-system))
 
 (in-package :roman-macro)
 

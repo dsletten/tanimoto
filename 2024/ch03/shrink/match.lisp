@@ -39,9 +39,9 @@
 ;;;;    (match '(a (* x)) '(a)) => (x), i.e., (x . nil)
 ;;;;    (match '(a (? x)) '(a nil)) => (x)
 ;;;;
-(load "/home/slytobias/lisp/packages/core.lisp")
-(load "/home/slytobias/lisp/packages/io.lisp")
-(load "/home/slytobias/lisp/packages/test.lisp")
+(load "/home/slytobias/lisp/packages/core")
+(load "/home/slytobias/lisp/packages/io")
+(load "/home/slytobias/lisp/packages/test")
 
 (defpackage :match
   (:use :common-lisp :core :io :test)
@@ -82,7 +82,7 @@
   (check
    (same-shape-tree-p '(a (b) c) '(x (y) nil))
    (not (same-shape-tree-p '(a (b) c) '(a b c)))
-   (match2 8 "Sure, why not?"))) ; !
+   (same-shape-tree-p 8 "Sure, why not?"))) ; !
 
 ;;;
 ;;;    Allow single element wildcard matches. Only examine top-level structure.
@@ -258,6 +258,8 @@
 
 ;;;
 ;;;    Alternative to Tanimoto, using multiple values
+;;;    Primary value: Did match succeed?
+;;;    Secondary value: Bindings for successful match (Empty list otherwise.)
 ;;;    
 (defun match4* (p s)
   (cond ((and (null p) (null s)) (values t '()))
@@ -342,7 +344,7 @@
                             (error () (values nil '()))) )))) ))))
 
 (defun match5 (p s)
-  (labels ((capture-binding-on-successful-match (var val p s)
+  (labels ((capture-binding-on-successful-match (var val p s) ; Cleaner than above version
              (multiple-value-bind (match subs) (match5 p s)
                (if match
                    (values match (acons var val subs))
@@ -417,7 +419,8 @@
           (multiple-value-list (match5 '((plusp z) (evenp y) (numberp x) (floatp p)) '(4 2 9 1.8d0))))
    (not (match5 '((plusp z) (evenp y) (numberp x) (floatp p)) '(4 2 9 1)))
    (equal '(t ((z . 4) (y . 2) (x . 9) (p . 1)))
-          (multiple-value-list (match5 (list '(plusp z) '(evenp y) '(numberp x) (list #'(lambda (x) (< x 8)) 'p)) '(4 2 9 1))))
+;          (multiple-value-list (match5 (list '(plusp z) '(evenp y) '(numberp x) (list #'(lambda (x) (< x 8)) 'p)) '(4 2 9 1))))
+          (multiple-value-list (match5 (list '(plusp z) '(evenp y) '(numberp x) (list (partial* #'< 8) 'p)) '(4 2 9 1))))
    ;;    Equivalent of wildcard
    (equal '(t ((x . 9)))
           (multiple-value-list (match5 (list 4 2 (list (constantly t) 'x) 1) '(4 2 9 1)))) ))
@@ -432,46 +435,45 @@
 ;;;    I have to handle that case before I try to destructure S. Consequently, later I only need to consider
 ;;;    his 2nd and 3rd cases.
 ;;;    
-(defun match6 (p s)
+(defun match6 (pattern subject)
   (labels ((capture-binding-on-successful-match (var val p s)
              (multiple-value-bind (match subs) (match6 p s)
                (if match
                    (values match (acons var val subs))
-                   (values nil '()))) )
+                   (failed-match))) )
+           (failed-match ()
+             (values nil '()))
            (pattern-operator (expr)
              (handler-case (destructuring-bind (operator var) expr
                              (values operator var))
-               (error () (values nil nil)))) )
-    (cond ((and (null p) (null s)) (values t '()))
-          ((null p) (values nil '()))
-          ((null s) (multiple-value-bind (operator var) (pattern-operator (first p))
-                      (case operator
-                        (* (multiple-value-bind (match subs) (match6 (rest p) s)
-                             (if match
-                                 (values match (acons var '() subs))
-                                 (values nil '()))) )
-                        (otherwise (values nil '()))) ))
-          ((or (atom p) (atom s)) (values nil '()))
-          (t (destructuring-bind (pattern . ps) p
-               (destructuring-bind (subject . ss) s
-                 (cond ((equalp pattern subject) (match6 ps ss)) ; Supersedes wildcard match?! (match '((? x) b c) '((? x) b c))
-                       ((atom pattern) (values nil '())) ; No literal match => must be wildcard (not atom)
-                       (t (multiple-value-bind (operator var) (pattern-operator pattern)
+               (error () (values nil nil))) ))
+    (cond ((and (null pattern) (null subject)) (values t '()))
+          ((null pattern) (failed-match))
+          ((null subject) (multiple-value-bind (operator var) (pattern-operator (first pattern))
                             (case operator
-                              ((nil) (values nil '())) ; Malformed
-                              (? (capture-binding-on-successful-match var subject ps ss))
-                              (* (multiple-value-bind (match subs) (match6 ps s) ; Order important here?
+                              (* (capture-binding-on-successful-match var '() (rest pattern) subject))
+                              (otherwise (failed-match))) ))
+          ((or (atom pattern) (atom subject)) (failed-match))
+          (t (destructuring-bind (p . ps) pattern
+               (destructuring-bind (s . ss) subject
+                 (cond ((equalp p s) (match6 ps ss)) ; Supersedes wildcard match?! (match '((? x) b c) '((? x) b c))
+                       ((atom p) (failed-match)) ; No literal match => must be wildcard (not atom)
+                       (t (multiple-value-bind (operator var) (pattern-operator p)
+                            (case operator
+                              ((nil) (failed-match)) ; Malformed
+                              (? (capture-binding-on-successful-match var s ps ss))
+                              (* (multiple-value-bind (match subs) (match6 ps subject) ; Order important here?
                                    (if match
                                        (values match (acons var '() subs))
-                                       (multiple-value-bind (match subs) (match6 p ss)
+                                       (multiple-value-bind (match subs) (match6 pattern ss)
                                          (if match
                                              (destructuring-bind (entry . entries) subs
                                                (assert (eq var (first entry)))
-                                               (values match (acons var (cons subject (rest entry)) entries)))
-                                             (values nil '()))) )))
-                              (otherwise (if (funcall operator subject)
-                                             (capture-binding-on-successful-match var subject ps ss)
-                                             (values nil '()))) )))) )))) ))
+                                               (values match (acons var (cons s (rest entry)) entries)))
+                                             (failed-match))) )))
+                              (otherwise (if (funcall operator s)
+                                             (capture-binding-on-successful-match var s ps ss)
+                                             (failed-match)))) )))) )))) )
 
 (setf (symbol-function 'match) #'match6)
 
@@ -554,9 +556,11 @@
    (equal '(t ((x))) ; i.e., (x . nil)
           (multiple-value-list (match6 '(a (? x)) '(a nil))))
 
-   ;;    No consistency check
+   ;;    No consistency check -- 见 MATCHL
    (equal '(t ((x . a) (x c d)))
           (multiple-value-list (match6 '((? x) b (* x)) '(a b c d))))
+   (equal '(t ((x . foo) (y . bar) (x . baz)))
+          (multiple-value-list (match6 '((? x) (? y) (? x)) '(foo bar baz))))
 
    ;;    Predicate
    (not (match6 '(a b (numberp x) d) '(a b c d)))

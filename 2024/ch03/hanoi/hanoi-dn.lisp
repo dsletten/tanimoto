@@ -24,10 +24,11 @@
 ;;;;   Notes:
 ;;;;
 ;;;;
-(load "/home/slytobias/lisp/packages/core.lisp")
-(load "/home/slytobias/lisp/packages/io.lisp")
-(load "/home/slytobias/lisp/packages/hanoi.lisp")
-(load "/home/slytobias/lisp/books/Tanimoto/2024/ch03/discrimination-net.lisp")
+(load "/home/slytobias/lisp/packages/core")
+(load "/home/slytobias/lisp/packages/io")
+(load "/home/slytobias/lisp/packages/hanoi")
+;(load "/home/slytobias/lisp/books/Tanimoto/2024/ch03/discrimination-net.lisp")
+(load "/home/slytobias/Thelio/modified/lisp/books/Tanimoto/2024/ch03/discrimination-net.lisp")
 
 (defpackage :hanoi-dn
   (:use :common-lisp :core :io :hanoi :discrimination-net)
@@ -40,7 +41,7 @@
 ;;     (start (null temple)
 ;;       (setf temple (make-temple :a (add-disks (make-instance 'peg)
 ;;                                               (loop for i from 1 to (get-num "Enter number of disks: "
-;;                                                                              :test (every-pred #'integerp
+;;                                                                              :test (conjoin #'integerp
 ;;                                                                                                #'(lambda (n) (<= 1 n 6))))
 ;;                                                     collect i)))
 ;;             state 'transfer-ab)
@@ -83,7 +84,7 @@
       (start (null temple)
         (setf temple (make-temple :a (add-disks (make-instance 'peg)
                                                 (loop for i from 1 to (get-num "Enter number of disks: "
-                                                                               :test (every-pred #'integerp
+                                                                               :test (conjoin #'integerp
                                                                                                  #'(lambda (n) (<= 1 n 6))))
                                                       collect i)))
               current :a

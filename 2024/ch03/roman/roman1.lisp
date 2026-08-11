@@ -24,9 +24,10 @@
 ;;;;   Notes:
 ;;;;
 ;;;;
-(load "/home/slytobias/lisp/packages/core.lisp")
-(load "/home/slytobias/lisp/packages/io.lisp")
-(load "/home/slytobias/lisp/books/Tanimoto/2024/ch03/production-system.lisp")
+(load "/home/slytobias/lisp/packages/core")
+(load "/home/slytobias/lisp/packages/io")
+;(load "/home/slytobias/lisp/books/Tanimoto/2024/ch03/production-system.lisp")
+(load "/home/slytobias/Thelio/modified/lisp/books/Tanimoto/2024/ch03/production-system.lisp")
 
 (defpackage :roman1 (:use :common-lisp :core :io :production-system))
 

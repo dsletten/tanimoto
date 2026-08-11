@@ -27,8 +27,8 @@
 ;;;;   - Slade 20 Questions - add new nodes
 ;;;;
 ;;;;
-(load "/home/slytobias/lisp/packages/core.lisp")
-(load "/home/slytobias/lisp/packages/test.lisp")
+(load "/home/slytobias/lisp/packages/core")
+(load "/home/slytobias/lisp/packages/test")
 
 (defpackage :discrimination-net
   (:use :common-lisp :test :core)
